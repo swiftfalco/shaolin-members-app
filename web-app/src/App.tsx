@@ -6,29 +6,16 @@ import "./App.css";
 import { getMembers } from "./Services/memberService";
 import { getMemberTechniques } from "./Services/techniqueService";
 import { getMemberProgress } from "./Services/progressServices";
-import { addStudentReview } from "./Services/reviewService";
-import { getInstructors } from "./Services/instructorService";
 import { useMsal } from "@azure/msal-react";
 
+
 function App() {
-  const [members, setMembers] = useState<any[]>([]);
   const [selectedMember, setSelectedMember] = useState<any>(null);
   const [outstandingTechniques, setOutstandingTechniques] = useState<any[]>([]);
   const [progress, setProgress] = useState<any>(null);
-  const [instructors, setInstructors] =  useState<any[]>([]);
   const { accounts, instance } = useMsal();
   const isAuthenticated = accounts.length > 0;
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
-
-const [
-  showPromotionDialog,
-  setShowPromotionDialog,
-] = useState(false);
-
-const [
-  promotionMessage,
-  setPromotionMessage,
-] = useState("");
 
 console.log("Accounts:", accounts);
 console.log(
@@ -46,15 +33,6 @@ useEffect(() => {
     );
   }
 }, [accounts, instance]);
-
-    const [showReviewDialog, setShowReviewDialog] =
-    useState(false);
-
-  const [selectedTechnique, setSelectedTechnique] =
-    useState<any>(null);
-
-  const [instructorInitials, setInstructorInitials] =
-    useState("");
 
   const sashNames: Record<string, string> = {
     "01": "Grey Sash",
@@ -90,142 +68,44 @@ useEffect(() => {
     setProgress(data);
   }
 
-  async function reviewTechnique(
-    techniqueId: string
-  ) {
-    if (!selectedMember) {
-      return;
-    }
-
-const result =
-  await addStudentReview(
-    selectedMember.rowKey,
-    techniqueId,
-    instructorInitials
-  );
-console.log(
-  "Review Result:",
-  result
-);
-
-if (result.promoted) {
-
-  setPromotionMessage(
-    `${result.memberName}
-     has earned enough points
-     to reach
-     ${result.newSash} Sash`
-  );
-
-  setShowPromotionDialog(
-    true
-  );
-}
-
-    await loadTechniques(
-      selectedMember.rowKey
-    );
-
-    await loadProgress(
-      selectedMember.rowKey
-    );
-    const refreshedMembers =
-  await getMembers();
-
-setMembers(refreshedMembers);
-
-const refreshedMember =
-  refreshedMembers.find(
-    (m: any ) =>
-      m.rowKey ===
-      selectedMember.rowKey
-  );
-
-if (refreshedMember) {
-  setSelectedMember(
-    refreshedMember
-  );
-}
-  }
-  
-  async function confirmReview() {
-    if (!selectedTechnique) {
-      return;
-    }
-
-    if (instructorInitials.trim() === "") {
-      alert("Please select an instructor.");
-      return;
-    }
-
-    await reviewTechnique(
-      selectedTechnique.rowKey
-    );
-
-    setShowReviewDialog(false);
-    setSelectedTechnique(null);
-    setInstructorInitials("");
-  }
-
-  useEffect(() => {
+useEffect(() => {
 if (!isAuthenticated) {
 setIsAuthorized(null);
 return;
 }
-    async function loadMembers() {
-const instructorData =
-  await getInstructors();
+async function loadMembers() {
+  const currentUser =
+    accounts[0]?.username?.toLowerCase();
 
-setInstructors(instructorData);
+  const memberData =
+    await getMembers();
+    console.log("MEMBERS", memberData);
+    console.log("USER", currentUser);
 
-const currentUser =
-  accounts[0]?.username?.toLowerCase();
+  const member =
+    memberData.find(
+      (m: any) =>
+        m.Email?.toLowerCase() ===
+        currentUser
+    );
 
-const authorised =
-  instructorData.some(
-    (i: any) =>
-      i.Email?.toLowerCase() ===
-      currentUser
+  if (!member) {
+    setIsAuthorized(false);
+    return;
+  }
+
+  setIsAuthorized(true);
+
+  setSelectedMember(member);
+
+  await loadTechniques(
+    member.rowKey
   );
 
-console.log(
-  "Current User:",
-  currentUser
-);
-
-console.log(
-  "Instructor Data:",
-  instructorData
-);
-
-console.log(
-  "Authorised:",
-  authorised
-);
-
-
-setIsAuthorized(authorised);
-
-if (!authorised) {
-  return;
+  await loadProgress(
+    member.rowKey
+  );
 }
-
-const data = await getMembers();
-
-setMembers(data);
-
-if (data.length > 0) {
-        setSelectedMember(data[0]);
-
-        await loadTechniques(
-          data[0].rowKey
-        );
-
-        await loadProgress(
-          data[0].rowKey
-        );
-      }
-    }
 
     loadMembers();
 }, [accounts, isAuthenticated]);
@@ -259,7 +139,7 @@ if (!isAuthenticated) {
         </img>
 
       <h2>
-        Sign in to access the Instructor Dashboard
+        Sign in to access the Member Dashboard
       </h2>
  
       <button
@@ -283,7 +163,7 @@ if (!isAuthenticated) {
 if (isAuthorized === null) {
   return (
     <div className="instructor-container">
-      <h1>Kung Fu Instructor Dashboard</h1>
+      <h1>Kung Fu Member's Dashboard</h1>
       <p>Loading...</p>
     </div>
   );
@@ -293,7 +173,7 @@ if (isAuthorized === false) {
   return (
     <div className="instructor-container">
       <h1>
-        Kung Fu Instructor Dashboard
+        Kung Fu Member's Dashboard
       </h1>
 
       <p>
@@ -325,7 +205,7 @@ if (isAuthorized === false) {
   }}
 >
   <h1>
-    Kung Fu Instructor Dashboard
+    Kung Fu Member's Dashboard
   </h1>
 
   <div>
@@ -345,76 +225,6 @@ if (isAuthorized === false) {
     </button>
   </div>
 </div>
-
-{
-  showPromotionDialog && (
-    <div className="dialog-overlay">
-      <div className="dialog-box">
-
-        <h2>
-          🎉 Sash Promotion
-        </h2>
-
-        <p>
-          {promotionMessage}
-        </p>
-
-        <button
-          onClick={() =>
-            setShowPromotionDialog(
-              false
-            )
-          }
-        >
-          OK
-        </button>
-
-      </div>
-    </div>
-  )
-}
-
-
-      <div className="summary">
-        <div className="card">
-          <h3>Total Members</h3>
-          <p>{members.length}</p>
-        </div>
-      </div>
-
-      <h2>Select Student</h2>
-
-      <select
-        className="member-select"
-        value={selectedMember?.rowKey || ""}
-        onChange={(e) => {
-          const member = members.find(
-            (m) => m.rowKey === e.target.value
-          );
-
-          if (member) {
-            setSelectedMember(member);
-
-            loadTechniques(
-              member.rowKey
-            );
-
-            loadProgress(
-              member.rowKey
-            );
-          }
-        }}
-      >
-        {members.map((member) => (
-          <option
-            key={member.rowKey}
-            value={member.rowKey}
-          >
-            {String(member.FirstName).replace(/"/g, "")}{" "}
-            {String(member.LastName).replace(/"/g, "")}
-          </option>
-        ))}
-      </select>
 
       {selectedMember && (
         <>
@@ -483,23 +293,7 @@ if (isAuthorized === false) {
                             ).replace(/"/g, "")}
                           </span>
 
-                          <button
-                            className="review-button"
-                            onClick={() => {
-                              setSelectedTechnique(
-                                technique
-                              );
-
-                              setInstructorInitials("");
-
-                              setShowReviewDialog(
-                                true
-                              );
-                            }}
-                          >
-                            Review
-                          </button>
-                        </li>
+                          </li>
                       )
                     )}
                   </ul>
@@ -508,84 +302,7 @@ if (isAuthorized === false) {
           </div>
         </>
       )}
-
-      {showReviewDialog && (
-        <div className="dialog-overlay">
-          <div className="dialog-box">
-            <h2>Confirm Review</h2>
-
-            <p>
-              Mark this technique as
-              reviewed?
-            </p>
-
-            <p>
-              <strong>
-                {selectedTechnique?.Name}
-              </strong>
-            </p>
-
-<select
-  className="member-select"
-  value={instructorInitials}
-  onChange={(e) =>
-    setInstructorInitials(
-      e.target.value
-    )
-  }
->
-  <option value="">
-    Select Instructor
-  </option>
-
-  {instructors.map(
-    (instructor) => (
-      <option
-        key={instructor.rowKey}
-        value={
-          String(
-            instructor.Initials
-          ).replace(/"/g, "")
-        }
-      >
-        {String(
-          instructor.Name
-        ).replace(/"/g, "")}
-        {" ("}
-        {String(
-          instructor.Initials
-        ).replace(/"/g, "")}
-        {")"}
-      </option>
-    )
+  </div>
   )}
-</select>
-
-            <div className="dialog-buttons">
-              <button
-                onClick={() => {
-                  setShowReviewDialog(
-                    false
-                  );
-                  setSelectedTechnique(
-                    null
-                  );
-                }}
-              >
-                Cancel
-              </button>
-
-              <button
-                onClick={confirmReview}
-              >
-                Confirm
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
 
 export default App;
