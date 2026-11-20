@@ -7,6 +7,7 @@ import { getMembers } from "./Services/memberService";
 import { getMemberTechniques } from "./Services/techniqueService";
 import { getMemberProgress } from "./Services/progressServices";
 import { useMsal } from "@azure/msal-react";
+import { getMemberTechniqueNotes, saveMemberTechniqueNote, } from "./Services/memberTechniqueNotesService";
 
 
 function App() {
@@ -17,12 +18,6 @@ function App() {
   const isAuthenticated = accounts.length > 0;
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
   const [techniqueNotes, setTechniqueNotes] = useState<Record<string, string>>({});
-
-console.log("Accounts:", accounts);
-console.log(
-  "Active:",
-  instance.getActiveAccount()
-);
 
 useEffect(() => {
   if (
@@ -36,36 +31,11 @@ useEffect(() => {
 }, [accounts, instance]);
 
 useEffect(() => {
-  const savedNotes =
-    localStorage.getItem(
-      "member-technique-notes"
-    );
-
-  console.log(
-    "Loading notes",
-    savedNotes
-  );
-console.log(
-  "Current Notes",
-  techniqueNotes
-);
-  if (savedNotes) {
-    setTechniqueNotes(
-      JSON.parse(savedNotes)
-    );
-  }
-}, []);
-
-useEffect(() => {
   if (Object.keys(techniqueNotes).length === 0) {
     return;
   }
 
-  localStorage.setItem(
-    "member-technique-notes",
-    JSON.stringify(techniqueNotes)
-  );
-}, [techniqueNotes]);
+ }, [techniqueNotes]);
 
   const sashNames: Record<string, string> = {
     "01": "Grey Sash",
@@ -112,9 +82,6 @@ async function loadMembers() {
 
   const memberData =
     await getMembers();
-    console.log("MEMBERS", memberData);
-    console.log("USER", currentUser);
-
   const member =
     memberData.find(
       (m: any) =>
@@ -138,6 +105,27 @@ async function loadMembers() {
   await loadProgress(
     member.rowKey
   );
+
+const notes =
+  await getMemberTechniqueNotes(
+    String(member.rowKey)
+      .replace(/"/g, "")
+  );
+
+const notesMap:
+  Record<string,string> = {};
+
+notes.forEach(
+  (note: any) => {
+    notesMap[
+      note.techniqueId
+    ] = note.notes;
+  }
+);
+
+setTechniqueNotes(
+  notesMap
+);
 }
 
     loadMembers();
@@ -347,12 +335,19 @@ if (isAuthorized === false) {
                               e.currentTarget.style.height =
                               e.currentTarget.scrollHeight + "px";
                               }}
-                            onChange={(e) => {
-                            console.log("Updating",technique.rowKey, e.target.value);
-                            setTechniqueNotes(prev => ({...prev, [technique.rowKey]: e.target.value
+                            onChange={async (e) => {
+                              const value = e.target.value;
+                              setTechniqueNotes(prev => ({...prev, [technique.rowKey]: value
                             }));
-                            }}
-                            />
+await saveMemberTechniqueNote(
+  String(selectedMember.rowKey)
+    .replace(/"/g, ""),
+  String(technique.rowKey)
+    .replace(/"/g, ""),
+  value
+);
+}}
+                           />
                           </li>
                       )
                     )}
