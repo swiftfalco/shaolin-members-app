@@ -16,6 +16,7 @@ function App() {
   const { accounts, instance } = useMsal();
   const isAuthenticated = accounts.length > 0;
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
+  const [techniqueNotes, setTechniqueNotes] = useState<Record<string, string>>({});
 
 console.log("Accounts:", accounts);
 console.log(
@@ -33,6 +34,38 @@ useEffect(() => {
     );
   }
 }, [accounts, instance]);
+
+useEffect(() => {
+  const savedNotes =
+    localStorage.getItem(
+      "member-technique-notes"
+    );
+
+  console.log(
+    "Loading notes",
+    savedNotes
+  );
+console.log(
+  "Current Notes",
+  techniqueNotes
+);
+  if (savedNotes) {
+    setTechniqueNotes(
+      JSON.parse(savedNotes)
+    );
+  }
+}, []);
+
+useEffect(() => {
+  if (Object.keys(techniqueNotes).length === 0) {
+    return;
+  }
+
+  localStorage.setItem(
+    "member-technique-notes",
+    JSON.stringify(techniqueNotes)
+  );
+}, [techniqueNotes]);
 
   const sashNames: Record<string, string> = {
     "01": "Grey Sash",
@@ -283,16 +316,43 @@ if (isAuthorized === false) {
                   <ul>
                     {groupedTechniques[sash].map(
                       (technique: any) => (
-                        <li
-                          key={technique.rowKey}
-                          className="technique-item"
-                        >
+                    <li
+                      key={technique.rowKey}
+                      className="technique-item"
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "flex-start",
+                        marginBottom: "15px",
+                      }}
+                    >
                           <span>
                             {String(
                               technique.Name
                             ).replace(/"/g, "")}
                           </span>
-
+                          <textarea
+                              placeholder="Add personal notes..."
+                              rows={1}
+                              value={techniqueNotes[technique.rowKey] || ""}
+                              style={{
+                                width: "100%",
+                                marginTop: "8px",
+                                minHeight: "32px",
+                                overflow: "hidden",
+                                resize: "none"
+                              }}
+                            onInput={(e) => {
+                              e.currentTarget.style.height = "auto";
+                              e.currentTarget.style.height =
+                              e.currentTarget.scrollHeight + "px";
+                              }}
+                            onChange={(e) => {
+                            console.log("Updating",technique.rowKey, e.target.value);
+                            setTechniqueNotes(prev => ({...prev, [technique.rowKey]: e.target.value
+                            }));
+                            }}
+                            />
                           </li>
                       )
                     )}
