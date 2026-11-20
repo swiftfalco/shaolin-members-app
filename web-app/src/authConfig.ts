@@ -1,7 +1,7 @@
 export const msalConfig = {
   auth: {
     clientId:
-      "d90eb939-cbda-452f-88c9-88b881501c8c",
+      "e64195fc-d123-4492-95ce-13909a1a20ce",
 
     authority:
       "https://skfinstructor.ciamlogin.com/4d93244f-08b1-40da-8d66-6587137cf091",
