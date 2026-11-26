@@ -18,8 +18,11 @@ function App() {
   const isAuthenticated = accounts.length > 0;
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
   const [techniqueNotes, setTechniqueNotes] = useState<Record<string, string>>({});
+  const [techniqueFilter, setTechniqueFilter] = useState("outstanding");
+  const [completedTechniques, setCompletedTechniques] =  useState<any[]>([]);
 
-useEffect(() => {
+
+  useEffect(() => {
   if (
     !instance.getActiveAccount() &&
     accounts.length > 0
@@ -30,13 +33,6 @@ useEffect(() => {
   }
 }, [accounts, instance]);
 
-useEffect(() => {
-  if (Object.keys(techniqueNotes).length === 0) {
-    return;
-  }
-
- }, [techniqueNotes]);
-
   const sashNames: Record<string, string> = {
     "01": "Grey Sash",
     "02": "White Sash",
@@ -45,26 +41,54 @@ useEffect(() => {
     "05": "Blue Sash",
   };
 
-  async function loadTechniques(memberId: string) {
-    const data = await getMemberTechniques(memberId);
+async function loadTechniques(memberId: string) {
+  const data = await getMemberTechniques(memberId);
 
-    const sorted = [...(data.outstanding || [])].sort((a, b) => {
-      const sashCompare =
-        Number(a.SashOrder || 0) -
-        Number(b.SashOrder || 0);
+  const sortedOutstanding =
+    [...(data.outstanding || [])].sort(
+      (a, b) => {
+        const sashCompare =
+          Number(a.SashOrder || 0) -
+          Number(b.SashOrder || 0);
 
-      if (sashCompare !== 0) {
-        return sashCompare;
+        if (sashCompare !== 0) {
+          return sashCompare;
+        }
+
+        return (
+          Number(a.DisplayOrder || 0) -
+          Number(b.DisplayOrder || 0)
+        );
       }
+    );
 
-      return (
-        Number(a.DisplayOrder || 0) -
-        Number(b.DisplayOrder || 0)
-      );
-    });
+  const sortedCompleted =
+    [...(data.reviewed || [])].sort(
+      (a, b) => {
+        const sashCompare =
+          Number(a.SashOrder || 0) -
+          Number(b.SashOrder || 0);
 
-    setOutstandingTechniques(sorted);
-  }
+        if (sashCompare !== 0) {
+          return sashCompare;
+        }
+
+        return (
+          Number(a.DisplayOrder || 0) -
+          Number(b.DisplayOrder || 0)
+        );
+      }
+    );
+
+  setOutstandingTechniques(
+    sortedOutstanding
+  );
+
+  setCompletedTechniques(
+    sortedCompleted
+  );
+}
+
 
   async function loadProgress(memberId: string) {
     const data = await getMemberProgress(memberId);
@@ -130,9 +154,41 @@ setTechniqueNotes(
 
     loadMembers();
 }, [accounts, isAuthenticated]);
+let displayedTechniques =
+  outstandingTechniques;
+
+if (
+  techniqueFilter ===
+  "completed"
+) {
+  displayedTechniques =
+    completedTechniques;
+}
+
+if (
+  techniqueFilter === "all"
+) {
+displayedTechniques = [
+  ...completedTechniques,
+  ...outstandingTechniques,
+].sort((a, b) => {
+  const sashCompare =
+    Number(a.SashOrder || 0) -
+    Number(b.SashOrder || 0);
+
+  if (sashCompare !== 0) {
+    return sashCompare;
+  }
+
+  return (
+    Number(a.DisplayOrder || 0) -
+    Number(b.DisplayOrder || 0)
+  );
+});
+}
 
   const groupedTechniques =
-    outstandingTechniques.reduce(
+    displayedTechniques.reduce(
       (groups: any, technique: any) => {
         const sash =
           technique.SashOrder ?? "00";
@@ -287,7 +343,32 @@ if (isAuthorized === false) {
           )}
 
           <div className="technique-box">
-            <h2>Outstanding Techniques</h2>
+            Show:
+            <select
+              value={techniqueFilter}
+                onChange={(e) =>
+                  setTechniqueFilter(
+                    e.target.value
+                  )
+                  }
+              >
+            <option value="outstanding">
+              Outstanding Items
+            </option>
+            <option value="completed">
+              Completed Items
+            </option>
+            <option value="all">
+              All Items
+            </option>
+          </select>
+        <h2>
+            {techniqueFilter === "completed"
+            ? "Completed Techniques"
+            : techniqueFilter === "all"
+            ? "All Techniques"
+            : "Outstanding Techniques"}
+        </h2>
 
             {Object.keys(groupedTechniques)
               .sort()
@@ -315,9 +396,9 @@ if (isAuthorized === false) {
                       }}
                     >
                           <span>
-                            {String(
-                              technique.Name
-                            ).replace(/"/g, "")}
+                          {completedTechniques.some( (t) => t.rowKey === technique.rowKey ) ? "✓ " : ""}
+
+{String( technique.Name ).replace(/"/g, "")}
                           </span>
                           <textarea
                               placeholder="Add personal notes..."
